@@ -1,0 +1,79 @@
+PROGRAM SOCK_REF_CLIENT
+------------------------------------------------------------------------------------------
+%STACKSIZE = 4000
+%NOLOCKGROUP
+%NOPAUSE = ERROR + COMMAND + TPENABLE
+%ENVIRONMENT flbt
+%ENVIRONMENT regope
+------------------------------------------------------------------------------------------
+VAR 
+    status      : INTEGER
+	entry		: INTEGER
+    comm_file   : FILE 
+    cpose       : XYZWPR
+    lrpose      : XYZWPR
+    ref_posns   : INTEGER
+    count_str   : STRING[64]
+	cap_resp	: INTEGER
+    lrx         : REAL
+    lry         : REAL
+    lrz         : REAL
+    lrw         : REAL
+    lrp         : REAL
+    lrr         : REAL
+------------------------------------------------------------------------------------------
+BEGIN 
+    -- Clear TP Screen
+    WRITE(CHR(128), CHR(137))
+    FORCE_SPMENU(TP_PANEL, SPI_TPUSER, 1)
+    WRITE('Started Socket DPM Client Program.', cr)
+    WRITE('Connecting to Server...', cr)
+
+    -- Clean Start Server Tag
+    MSG_DISCO('C6:', status)
+    CLOSE FILE comm_file
+
+    -- Connect to Client
+    SET_FILE_ATR(comm_file, ATR_UF)
+    MSG_CONNECT('C6:', status)
+
+    IF status = 0 THEN
+        -- Accept the Connection
+        OPEN FILE comm_file('rw', 'C6:')
+		WRITE('Server Connection Accepted.', cr)
+        FLG[2] = ON
+
+		-- Local Referencing
+        ref_posns = 0
+        WHILE (ref_posns < 3) DO
+            WAIT FOR (FLG[3] = ON)
+            WRITE comm_file (31)
+			DELAY(1000)
+			cpose = CURPOS(0, 0)
+			WRITE comm_file(cpose.x, cpose.y, cpose.z, cpose.w, cpose.p, cpose.r)
+			READ comm_file (cap_resp)
+            FLG[3] = OFF
+            ref_posns = ref_posns + 1
+            CNV_INT_STR(ref_posns, 1, 0, count_str)
+            WRITE('Captured at position', count_str, cr)
+        ENDWHILE
+        
+        lrpose = CURPOS(0, 0)
+        WRITE comm_file (41)
+        READ comm_file (lrx, lry, lrz, lrw, lrp, lrr)
+        lrpose.x = lrx
+        lrpose.y = lry
+        lrpose.z = lrz
+        lrpose.w = lrw
+        lrpose.p = lrp
+        lrpose.r = lrr
+        SET_POS_REG(7, lrpose, status)
+        FLG[4] = ON
+        WRITE('LR Transform Set.', cr)
+
+        -- Close the Connection
+        WRITE('Disconnecting...', cr)
+        MSG_DISCO('C6:', status)
+        WRITE('Done.', cr)
+    ENDIF 
+END SOCK_REF_CLIENT

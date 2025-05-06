@@ -1,0 +1,72 @@
+PROGRAM HSPOTEST
+------------------------------------------------------------------------------------------
+%NOLOCKGROUP
+%NOPAUSE = ERROR +COMMAND + TPENABLE 
+%NOBUSYLAMP
+%CMOSVARS
+%COMMENT = 'HSPOTEST1'
+------------------------------------------------------------------------------------------
+VAR
+    Flag        : BOOLEAN
+    real_value  : REAL
+    RValue1     : INTEGER
+    RValue2     : INTEGER
+    RValue3     : INTEGER
+    real_flag   : BOOLEAN
+    int_value   : INTEGER
+    status      : INTEGER
+------------------------------------------------------------------------------------------
+BEGIN
+    Flag =TRUE
+
+    WHILE (Flag = TRUE) DO
+
+        -- First Register
+        GET_REG (1,real_flag,int_value,real_value, status)
+        IF (status <> 0) THEN
+            WRITE('Default on the First GetReg',CR)
+            FORCE_SPMENU(TP_PANEL, SPI_TPUSER, 1)
+            POST_ERR(status,'',0,2)
+        ENDIF
+
+        IF (real_flag = TRUE) THEN
+            RValue1=TRUNC(real_value)
+        ELSE
+            RValue1 = int_value
+        ENDIF
+
+        -- Second Register
+        GET_REG (2,real_flag,int_value,real_value, status)
+        IF (status <> 0) THEN
+            WRITE('Default on the Second GetReg',CR)
+            FORCE_SPMENU(TP_PANEL, SPI_TPUSER, 1)
+            POST_ERR(status,'',0,2)
+        ENDIF
+
+        IF (real_flag = TRUE) THEN
+            RValue2=TRUNC(real_value)
+        ELSE
+            RValue2 = int_value
+        ENDIF
+
+        -- Third Register
+        GET_REG (3,real_flag,int_value,real_value, status)
+        IF (status <> 0) THEN
+            WRITE('Default on the Third GetReg',CR)
+            FORCE_SPMENU(TP_PANEL, SPI_TPUSER, 1)
+            POST_ERR(status,'',0,2)
+        ENDIF
+
+        IF (real_flag = TRUE) THEN
+            RValue3=TRUNC(real_value)
+        ELSE
+            RValue3 = int_value
+        ENDIF
+
+        DELAY 50
+
+        Flag=FLG[1]
+
+    ENDWHILE        
+
+END HSPOTEST

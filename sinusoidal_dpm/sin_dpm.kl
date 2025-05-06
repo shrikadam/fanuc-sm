@@ -1,0 +1,70 @@
+PROGRAM SIN_DPM
+------------------------------------------------------------------------------------------
+%STACKSIZE = 4000
+%NOLOCKGROUP
+%NOPAUSE = ERROR + COMMAND + TPENABLE
+%ENVIRONMENT flbt
+%ENVIRONMENT regope
+------------------------------------------------------------------------------------------
+VAR 
+	real_flag	: BOOLEAN
+	int_value	: INTEGER
+	ampl		: REAL
+	weave_freq	: REAL
+	cycle_freq	: REAL
+	count		: INTEGER
+	actual_angle: REAL
+	mod_angle	: REAL
+    dx          : REAL
+	status      : INTEGER
+	entry		: INTEGER
+CONST
+	ctrl_freq = 250
+------------------------------------------------------------------------------------------
+BEGIN 
+	-- Clear TP Screen
+    WRITE(CHR(128), CHR(137))
+    FORCE_SPMENU(TP_PANEL, SPI_TPUSER, 1)
+    WRITE('Started the Program', cr)
+	WRITE('Waiting for Tracking Start...', cr)
+
+	-- Zero Initialize Offsets
+	SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[1].$INI_OFS', 0.0, status)
+	SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[2].$INI_OFS', 0.0, status)
+	SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[3].$INI_OFS', 0.0, status)
+	SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[4].$INI_OFS', 0.0, status)
+	SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[5].$INI_OFS', 0.0, status)
+	SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[6].$INI_OFS', 0.0, status)
+	
+	-- Get Weave Sine Frequency and Amplitude, Recommended values 0.01Hz and 50mm respectively
+	GET_REG(21,real_flag,int_value,weave_freq,status)
+	IF (real_flag = FALSE) THEN
+		weave_freq = int_value
+	ENDIF
+	
+	GET_REG(22,real_flag,int_value,ampl,status)
+	IF (real_flag = FALSE) THEN
+		ampl = int_value
+	ENDIF
+		
+	-- Compute Required Cycle Frequency
+	cycle_freq = weave_freq / ctrl_freq
+	WRITE('Cycle Frequency = ', cycle_freq, cr)
+
+    WAIT FOR (FLG[5] = ON)
+    WRITE('DPM Started!', cr)
+
+	count = 0
+    WHILE (FLG[5] = ON) DO
+		actual_angle = 360 * cycle_freq * count
+		-- Since SIN built-in accepts angle values between +-15000 deg, and math.fmod()
+		-- is implemented to contain values between +- 360 despite count++
+		mod_angle = actual_angle - 360 * TRUNC(actual_angle/360)  -- math.fmod()
+		dx = ampl * SIN(mod_angle) 
+        SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[1].$INI_OFS', dx, status)
+		count = count + 1
+    ENDWHILE
+
+	WRITE('Tracking Ended! Stopping the Program.', cr)
+
+END SIN_DPM
